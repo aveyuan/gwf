@@ -116,8 +116,12 @@ func (s *HttpServer) stop() {
 	if err := s.server.Shutdown(ctx); err != nil {
 		s.logger.Errorf("正常关闭失败，进行强制关闭: %s\n", err.Error())
 	}
-	s.logger.Infof("开始关闭资源...")
-	s.closeFunc()
+
+	if s.closeFunc != nil {
+		s.logger.Infof("开始关闭资源...")
+		s.closeFunc()
+	}
+
 }
 
 func (s *HttpServer) Restart() error {
