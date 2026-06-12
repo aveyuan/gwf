@@ -63,7 +63,7 @@ func (s *HttpServer) Start() {
 		}
 	}()
 
-	s.logger.Warn("服务启动完成")
+	s.logger.Warn("服务启动完成", "addr", s.server.Addr)
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
