@@ -3,7 +3,7 @@ package gwf
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -13,37 +13,18 @@ import (
 	"time"
 )
 
-type Logger interface {
-	Infof(format string, a ...any)
-	Errorf(format string, a ...any)
-}
-
-func NewVlogger() Logger {
-	return &vlogger{}
-}
-
-type vlogger struct {
-}
-
-func (t *vlogger) Infof(format string, a ...any) {
-	log.Printf(format, a...)
-}
-
-func (t *vlogger) Errorf(format string, a ...any) {
-	log.Printf(format, a...)
-}
 
 type HttpServer struct {
 	server      *http.Server
 	restartChan chan struct{}
-	logger      Logger
+	logger      *slog.Logger
 	closeChan   chan struct{}
 	closeFunc   func()
 }
 
 type Option func(*HttpServer)
 
-func WithLogger(logger Logger) Option {
+func WithLogger(logger *slog.Logger) Option {
 	return func(srv *HttpServer) {
 		srv.logger = logger
 	}
@@ -64,7 +45,7 @@ func WithCloseFunc(closeFunc func()) Option {
 func NewHttpServer(server *http.Server, options ...Option) *HttpServer {
 	srv := &HttpServer{
 		server:    server,
-		logger:    NewVlogger(),
+		logger:    slog.Default(),
 		closeChan: make(chan struct{}),
 	}
 
@@ -78,11 +59,11 @@ func NewHttpServer(server *http.Server, options ...Option) *HttpServer {
 func (s *HttpServer) Start() {
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil && errors.Is(err, http.ErrServerClosed) {
-			s.logger.Infof("服务关闭完成")
+			s.logger.Warn("服务关闭完成")
 		}
 	}()
 
-	s.logger.Infof("服务启动完成")
+	s.logger.Warn("服务启动完成")
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -95,10 +76,10 @@ func (s *HttpServer) Start() {
 		// 监听数据
 		go func() {
 			for range s.restartChan {
-				s.logger.Infof("收到重启信号")
+				s.logger.Warn("收到重启信号")
 				s.stop()
 				if err := s.Restart(); err != nil {
-					s.logger.Errorf("重启失败: %s\n", err.Error())
+					s.logger.Error("重启失败", "error", err.Error())
 				}
 			}
 		}()
@@ -109,16 +90,16 @@ func (s *HttpServer) Start() {
 }
 
 func (s *HttpServer) stop() {
-	s.logger.Infof("关闭服务中...")
+	s.logger.Warn("关闭服务中...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := s.server.Shutdown(ctx); err != nil {
-		s.logger.Errorf("正常关闭失败，进行强制关闭: %s\n", err.Error())
+		s.logger.Error("正常关闭失败，进行强制关闭", "error", err.Error())
 	}
 
 	if s.closeFunc != nil {
-		s.logger.Infof("开始关闭资源...")
+		s.logger.Warn("开始关闭资源...")
 		s.closeFunc()
 	}
 

@@ -1,18 +1,17 @@
 package main
 
 import (
+	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/aveyuan/gwf"
 	"github.com/labstack/echo/v4"
 
-	"github.com/go-kratos/kratos/v2/log"
 )
 
 func main() {
 
-	logger := log.NewHelper(log.NewStdLogger(os.Stdout))
+	logger := slog.Default()
 	var restartChan = make(chan struct{})
 	var closeFunc = func() {
 		logger.Info("关闭资源1")

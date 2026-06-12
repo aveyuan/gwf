@@ -1,18 +1,17 @@
 package main
 
 import (
+	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/aveyuan/gwf"
 	"github.com/gin-gonic/gin"
-	"github.com/go-kratos/kratos/v2/log"
 )
 
 func main() {
 
 	// 定义自定义实现的logger
-	logger := log.NewHelper(log.NewStdLogger(os.Stdout))
+	logger := slog.Default()
 	// 定义一个重启通道
 	var restartChan = make(chan struct{})
 	// 定义http停止后需要关闭的资源，例如db等，主动退出
